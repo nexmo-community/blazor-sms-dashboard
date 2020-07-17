@@ -1,0 +1,63 @@
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@using VonageSmsDashboard.Shared;
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@implements IDisposable
+
+<div class="x-display-table">
+    <h2>Delivered Messages</h2>
+
+    <table class="table" id="dlrList">
+        <thead>
+            <tr>
+                <th>To</th>
+                <th>From</th>
+                <th>Message Id</th>
+                <th>TimeStamp</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = _messages.Count - 1; i >= 0; i--)
+            {
+                var message = _messages[i];
+                <tr>
+                    <td>@message.Msisdn</td>
+                    <td>@message.To</td> @*note the to = the number you sent from*@
+                    <td>@message.MessageId</td>
+                    <td>@message.MessageTimestamp</td>
+                    <td>@message.Status</td>
+                </tr>
+            }
+        </tbody>
+
+    </table>
+</div>
+
+@code {
+    private HubConnection _hubConnection;
+    private List<DeliveryReceiptModel> _messages = new List<DeliveryReceiptModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/SmsHub"))
+            .Build();
+        _hubConnection.On<DeliveryReceiptModel>("ReceiveDlr", (dlr) =>
+        {
+            _messages.Add(dlr);
+            StateHasChanged();
+        });
+
+        await _hubConnection.StartAsync();
+        _messages = await Http.GetFromJsonAsync<List<DeliveryReceiptModel>>("/sms/getDlr");        
+    }
+
+
+    public bool IsConnected => _hubConnection.State == HubConnectionState.Connected;
+
+    public void Dispose()
+    {
+        _ = _hubConnection.DisposeAsync();
+    }
+}

@@ -1,0 +1,35 @@
+﻿@inject HttpClient Http
+@using System.Text.Json
+@using VonageSmsDashboard.Shared
+
+To:
+<input id="to" @bind="@Message.To" placeholder="To Number" class="input-group-text" />
+From:
+<input id="from" @bind="@Message.From" placeholder="From Number" class="input-group-text" />
+Text:
+<input id="text" @bind="@Message.Text" placeholder="Text" class="input-group-text" />
+<br />
+<button class="btn btn-primary" @onclick="SendSms">Send SMS</button>
+
+@if (LastMessageId != null)
+{
+    <br />
+    <h2>Most Recently Sent Message: @LastMessageId</h2>
+
+}
+
+@code {
+    OutboundSms Message { get; set; } = new OutboundSms();
+    string LastMessageId { get; set; }
+
+    private async Task SendSms()
+    {
+        var response = await Http.PostAsJsonAsync<OutboundSms>("/sms/sendsms", Message);
+        var json = await response.Content.ReadAsStringAsync();
+        Console.WriteLine(json);
+        LastMessageId = JsonSerializer.Deserialize<OutboundSms>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive=true}).MessageId;
+        Console.WriteLine(LastMessageId);
+        Message = new OutboundSms();
+        StateHasChanged();
+    }
+}
