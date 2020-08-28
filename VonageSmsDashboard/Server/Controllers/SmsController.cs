@@ -9,9 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-using Nexmo.Api.Messaging;
-using Nexmo.Api.Request;
+using Vonage.Messaging;
+using Vonage.Request;
 using VonageSmsDashboard.Shared;
+using Vonage.Utility;
 
 namespace VonageSmsDashboard.Server.Controllers
 {
@@ -74,15 +75,11 @@ namespace VonageSmsDashboard.Server.Controllers
         [Route("webhooks/inbound-sms")]
         public async Task<IActionResult> ReceiveSms()
         {
-            using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
-            {
-                var json = await reader.ReadToEndAsync();
-                var inboundSms = JsonConvert.DeserializeObject<InboundSms>(json);
-                var inboundSmsModel = new InboundSmsModel { Msisdn = inboundSms.Msisdn, To = inboundSms.To, MessageId = inboundSms.MessageId, Text = inboundSms.Text, MessageTimestamp = inboundSms.MessageTimestamp };
-                await _hubContext.Clients.All.SendAsync("ReceiveMessage", inboundSms);
-                _dbContext.InboundSms.Add(inboundSmsModel);
-                await _dbContext.SaveChangesAsync();
-            }
+            var inboundSms = WebhookParser.ParseWebhook<InboundSms>(Request.Body,Request.ContentType);
+            var inboundSmsModel = new InboundSmsModel { Msisdn = inboundSms.Msisdn, To = inboundSms.To, MessageId = inboundSms.MessageId, Text = inboundSms.Text, MessageTimestamp = inboundSms.MessageTimestamp };
+            await _hubContext.Clients.All.SendAsync("ReceiveMessage", inboundSms);
+            _dbContext.InboundSms.Add(inboundSmsModel);
+            await _dbContext.SaveChangesAsync();
             return NoContent();
         }
 
@@ -90,15 +87,11 @@ namespace VonageSmsDashboard.Server.Controllers
         [Route("webhooks/dlr")]
         public async Task<IActionResult> ReceiveDlr()
         {
-            using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
-            {
-                var json = await reader.ReadToEndAsync();
-                var dlr = JsonConvert.DeserializeObject<DeliveryReceipt>(json);
-                var dlrModel = new DeliveryReceiptModel { Msisdn = dlr.Msisdn, To = dlr.To, MessageId = dlr.MessageId, Status = dlr.StringStatus, MessageTimestamp = dlr.MessageTimestamp };
-                await _hubContext.Clients.All.SendAsync("ReceiveDlr", dlrModel);
-                _dbContext.Dlrs.Add(dlrModel);
-                await _dbContext.SaveChangesAsync();
-            }
+            var dlr = WebhookParser.ParseWebhook<DeliveryReceipt>(Request.Body,Request.ContentType);
+            var dlrModel = new DeliveryReceiptModel { Msisdn = dlr.Msisdn, To = dlr.To, MessageId = dlr.MessageId, Status = dlr.StringStatus, MessageTimestamp = dlr.MessageTimestamp };
+            await _hubContext.Clients.All.SendAsync("ReceiveDlr", dlrModel);
+            _dbContext.Dlrs.Add(dlrModel);
+            await _dbContext.SaveChangesAsync();
             return NoContent();
         }
     }
