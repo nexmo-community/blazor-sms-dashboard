@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Nexmo.Api.Messaging;
+using Vonage.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
